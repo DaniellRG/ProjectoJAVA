@@ -31,6 +31,7 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
 
     public IFrmMantenimientos(boolean esAdministrador) {
         initComponents();
+        tblMantenimientos.setDefaultEditor(Object.class, null);
         this.esAdministrador = esAdministrador;
         
         agruparRadioButtons();
@@ -75,12 +76,7 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
     }
     
     private void cargarDatos() {
-        DefaultTableModel modeloTabla = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
+        DefaultTableModel modeloTabla = new DefaultTableModel();
         listaMantenimientosActual = new ArrayList<>();
 
         try (Connection con = Conexion.obtenerConexion();

@@ -26,6 +26,7 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
      */
     public IFrmCostosMantenimiento() {
         initComponents();
+        tblCostos.setDefaultEditor(Object.class, null);
         
         this.setClosable(true);
         this.setTitle("Informe de Costos Invertidos en Mantenimiento (Solo Administrador)");
@@ -35,12 +36,7 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
     }
     
     private void calcularCostosTotales() {
-        DefaultTableModel modeloTabla = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
+        DefaultTableModel modeloTabla = new DefaultTableModel();
         lblTotalCostos.setText("Costo Total General Invertido: no disponible");
 
         try (Connection con = Conexion.obtenerConexion();

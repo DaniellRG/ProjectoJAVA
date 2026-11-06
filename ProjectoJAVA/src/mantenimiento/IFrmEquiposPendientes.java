@@ -26,6 +26,7 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
      */
     public IFrmEquiposPendientes() {
         initComponents();
+        tblPendientes.setDefaultEditor(Object.class, null);
         
         this.setClosable(true);
         this.setTitle("Informe de Equipos Pendientes / Próximos a Mantenimiento");
@@ -35,12 +36,7 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
     }
     
     private void cargarDatosPendientes() {
-        DefaultTableModel modeloTabla = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
+        DefaultTableModel modeloTabla = new DefaultTableModel();
 
         try (Connection con = Conexion.obtenerConexion();
              PreparedStatement pstm = con.prepareCall("call sp_listar_equipos_pendientes()");

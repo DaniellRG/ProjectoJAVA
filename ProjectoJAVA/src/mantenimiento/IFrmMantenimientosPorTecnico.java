@@ -28,6 +28,7 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
     
     public IFrmMantenimientosPorTecnico() {
         initComponents();
+        tblTecnico.setDefaultEditor(Object.class, null);
         
         this.setClosable(true);
         this.setTitle("Informe de Mantenimientos por Técnico");
@@ -59,12 +60,7 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
     }
     
     private void consultarPorTecnico() {
-        DefaultTableModel modeloTabla = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
+        DefaultTableModel modeloTabla = new DefaultTableModel();
 
         int idx = cmbTecnico.getSelectedIndex();
         int idTecnico = 0;
