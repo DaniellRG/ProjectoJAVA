@@ -400,6 +400,81 @@ begin
     order by m.fecha desc;
 end//
 
+-- consultar mantenimientos para la tabla de registro
+create procedure sp_listar_mantenimientos()
+begin
+    select
+        id_mantenimiento as `ID`,
+        id_equipo,
+        equipo as `Equipo`,
+        marca_modelo,
+        id_tecnico,
+        tecnico as `Técnico`,
+        usuario_tecnico,
+        fecha as `Fecha`,
+        id_tipo,
+        tipo_mantenimiento as `Tipo`,
+        id_estado,
+        estado as `Estado`,
+        costo as `Costo`,
+        descripcion
+    from vw_mantenimientos_realizados;
+end//
+
+-- consultar equipos pendientes para su informe
+create procedure sp_listar_equipos_pendientes()
+begin
+    select
+        concat(equipo, ' - ', marca_modelo) as `Equipo`,
+        tecnico as `Técnico Asignado`,
+        fecha as `Fecha Programada`,
+        tipo_mantenimiento as `Tipo`,
+        estado as `Estado`,
+        costo as `Costo Estimado`
+    from vw_equipos_pendientes;
+end//
+
+-- consultar costos por equipo para su informe
+create procedure sp_listar_costos_por_equipo()
+begin
+    select
+        equipo as `Equipo`,
+        marca_modelo as `Marca / Modelo`,
+        cantidad_servicios as `Cant. Servicios`,
+        costo_acumulado as `Costo Acumulado ($)`
+    from vw_costos_por_equipo;
+end//
+
+-- consultar el costo general mediante un procedimiento
+create procedure sp_costo_total_general()
+begin
+    select fn_costo_total_general() as `Costo Total General Invertido`;
+end//
+
+-- buscar un equipo por código o registrarlo si todavía no existe
+create procedure sp_obtener_o_crear_equipo(
+    in p_codigo_equipo varchar(50)
+)
+begin
+    declare v_id_equipo int;
+
+    if exists (
+        select 1
+        from equipo
+        where codigo_equipo = p_codigo_equipo
+    ) then
+        select id_equipo into v_id_equipo
+        from equipo
+        where codigo_equipo = p_codigo_equipo;
+    else
+        insert into equipo (codigo_equipo, marca_modelo, id_tipo_equipo)
+        values (p_codigo_equipo, concat('Equipo ', p_codigo_equipo), 1);
+        set v_id_equipo = last_insert_id();
+    end if;
+
+    select v_id_equipo as id_equipo;
+end//
+
 -- procedimientos para llenar combos
 create procedure sp_combo_equipos()
 begin

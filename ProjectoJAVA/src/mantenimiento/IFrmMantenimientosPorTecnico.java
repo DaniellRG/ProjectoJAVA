@@ -5,9 +5,10 @@
 package mantenimiento;
 
 import objetos.ItemCombo;
-import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import javax.swing.JOptionPane;
@@ -34,25 +35,30 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         configurarTabla();
-        cargarTecnicos();
-        consultarPorTecnico();
+        if (cargarTecnicos()) {
+            consultarPorTecnico();
+        } else {
+            lblCantidad.setText("Cantidad de mantenimientos encontrados: 0");
+        }
     }
     
     
-    private void cargarTecnicos() {
+    private boolean cargarTecnicos() {
         listaTecnicosCombo = new ArrayList<>();
         cmbTecnico.removeAllItems();
 
         try (Connection con = Conexion.obtenerConexion();
-             CallableStatement cs = con.prepareCall("{CALL sp_combo_tecnicos()}");
-             ResultSet rs = cs.executeQuery()) {
+             PreparedStatement pstm = con.prepareCall("call sp_combo_tecnicos()");
+             ResultSet rs = pstm.executeQuery()) {
             while (rs.next()) {
                 ItemCombo item = new ItemCombo(rs.getInt("id_usuario"), rs.getString("nombre_completo"));
                 listaTecnicosCombo.add(item);
                 cmbTecnico.addItem(item.getTexto());
             }
+            return true;
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al cargar técnicos: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
+            return false;
         }
     }
     
@@ -64,36 +70,36 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
                 return false;
             }
         };
-        modeloTabla.addColumn("Equipo");
-        modeloTabla.addColumn("Fecha");
-        modeloTabla.addColumn("Tipo");
-        modeloTabla.addColumn("Estado");
-        modeloTabla.addColumn("Costo");
         tblTecnico.setModel(modeloTabla);
     }
     
     private void consultarPorTecnico() {
-        modeloTabla.setRowCount(0); 
+        modeloTabla.setRowCount(0);
+        modeloTabla.setColumnCount(0);
 
         int idx = cmbTecnico.getSelectedIndex();
-        if (idx < 0 || listaTecnicosCombo == null || idx >= listaTecnicosCombo.size()) {
-            lblCantidad.setText("Cantidad de mantenimientos encontrados: 0");
-            return;
+        int idTecnico = 0;
+        if (idx >= 0 && idx < listaTecnicosCombo.size()) {
+            idTecnico = listaTecnicosCombo.get(idx).getId();
         }
 
-        int idTecnico = listaTecnicosCombo.get(idx).getId();
         int cantidad = 0;
         try (Connection con = Conexion.obtenerConexion();
-             CallableStatement cs = con.prepareCall("{CALL sp_mantenimientos_por_tecnico(?)}")) {
-            cs.setInt(1, idTecnico);
-            try (ResultSet rs = cs.executeQuery()) {
+             PreparedStatement pstm = con.prepareCall("call sp_mantenimientos_por_tecnico(?)")) {
+            pstm.setInt(1, idTecnico);
+            try (ResultSet rs = pstm.executeQuery()) {
+                ResultSetMetaData metadata = rs.getMetaData();
+                for (int i = 2; i <= 6; i++) {
+                    modeloTabla.addColumn(metadata.getColumnLabel(i));
+                }
+
                 while (rs.next()) {
                     modeloTabla.addRow(new Object[]{
-                        rs.getString("equipo"),
-                        rs.getString("fecha"),
-                        rs.getString("tipo_mantenimiento"),
-                        rs.getString("estado"),
-                        "$" + String.format("%,.2f", rs.getDouble("costo"))
+                        rs.getObject(2),
+                        rs.getObject(3),
+                        rs.getObject(4),
+                        rs.getObject(5),
+                        "$" + String.format("%,.2f", rs.getDouble(6))
                     });
                     cantidad++;
                 }

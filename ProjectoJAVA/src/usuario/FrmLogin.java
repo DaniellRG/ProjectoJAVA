@@ -4,8 +4,8 @@
  */
 package usuario;
 
-import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import javax.swing.JOptionPane;
@@ -44,11 +44,11 @@ public class FrmLogin extends javax.swing.JFrame {
         }
 
         try (Connection con = Conexion.obtenerConexion();
-             CallableStatement cs = con.prepareCall("{CALL sp_iniciar_sesion(?, ?)}")) {
-            cs.setString(1, usuarioTexto);
-            cs.setString(2, claveTexto);
+             PreparedStatement pstm = con.prepareCall("call sp_iniciar_sesion(?, ?)")) {
+            pstm.setString(1, usuarioTexto);
+            pstm.setString(2, claveTexto);
 
-            try (ResultSet rs = cs.executeQuery()) {
+            try (ResultSet rs = pstm.executeQuery()) {
                 if (rs.next()) {
                     FrmMain main = new FrmMain(
                         rs.getString("usuario"),

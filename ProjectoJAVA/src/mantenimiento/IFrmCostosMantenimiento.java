@@ -8,6 +8,7 @@ import usuario.Conexion;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -44,36 +45,41 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
                 return false;
             }
         };
-        modeloTabla.addColumn("Equipo");
-        modeloTabla.addColumn("Marca / Modelo");
-        modeloTabla.addColumn("Cant. Servicios");
-        modeloTabla.addColumn("Costo Acumulado ($)");
         tblCostos.setModel(modeloTabla);
     }
     
     private void calcularCostosTotales() {
         modeloTabla.setRowCount(0);
+        modeloTabla.setColumnCount(0);
         lblTotalCostos.setText("Costo Total General Invertido: no disponible");
 
-        String sql = "SELECT equipo, marca_modelo, cantidad_servicios, costo_acumulado FROM vw_costos_por_equipo";
         try (Connection con = Conexion.obtenerConexion();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                modeloTabla.addRow(new Object[]{
-                    rs.getString("equipo"),
-                    rs.getString("marca_modelo"),
-                    rs.getInt("cantidad_servicios"),
-                    "$" + String.format("%,.2f", rs.getDouble("costo_acumulado"))
-                });
+             PreparedStatement pstm = con.prepareCall("call sp_listar_costos_por_equipo()");
+             ResultSet rs = pstm.executeQuery()) {
+            ResultSetMetaData metadata = rs.getMetaData();
+            for (int i = 1; i <= metadata.getColumnCount(); i++) {
+                modeloTabla.addColumn(metadata.getColumnLabel(i));
             }
 
-            try (PreparedStatement psTotal = con.prepareStatement("SELECT fn_costo_total_general() AS total");
-                 ResultSet rsTotal = psTotal.executeQuery()) {
+            while (rs.next()) {
+                Object[] fila = new Object[metadata.getColumnCount()];
+                for (int i = 1; i <= metadata.getColumnCount(); i++) {
+                    if ("Costo Acumulado ($)".equals(metadata.getColumnLabel(i))) {
+                        fila[i - 1] = "$" + String.format("%,.2f", rs.getDouble(i));
+                    } else {
+                        fila[i - 1] = rs.getObject(i);
+                    }
+                }
+                modeloTabla.addRow(fila);
+            }
+
+            try (PreparedStatement pstmTotal = con.prepareCall("call sp_costo_total_general()");
+                 ResultSet rsTotal = pstmTotal.executeQuery()) {
                 if (!rsTotal.next()) {
                     throw new SQLException("La función de costo total no devolvió resultados.");
                 }
-                lblTotalCostos.setText("Costo Total General Invertido: $" + String.format("%,.2f", rsTotal.getDouble("total")));
+                ResultSetMetaData metadataTotal = rsTotal.getMetaData();
+                lblTotalCostos.setText(metadataTotal.getColumnLabel(1) + ": $" + String.format("%,.2f", rsTotal.getDouble(1)));
             }
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al cargar costos de mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);

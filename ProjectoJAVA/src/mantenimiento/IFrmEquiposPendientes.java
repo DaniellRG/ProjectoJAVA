@@ -7,6 +7,7 @@ package mantenimiento;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -44,32 +45,31 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
                 return false;
             }
         };
-        modeloTabla.addColumn("Equipo");
-        modeloTabla.addColumn("Técnico Asignado");
-        modeloTabla.addColumn("Fecha Programada");
-        modeloTabla.addColumn("Tipo");
-        modeloTabla.addColumn("Estado");
-        modeloTabla.addColumn("Costo Estimado");
         tblPendientes.setModel(modeloTabla);
     }
     
     private void cargarDatosPendientes() {
         modeloTabla.setRowCount(0);
-        String sql = "SELECT equipo, marca_modelo, tecnico, fecha, tipo_mantenimiento, estado, costo "
-            + "FROM vw_equipos_pendientes";
+        modeloTabla.setColumnCount(0);
 
         try (Connection con = Conexion.obtenerConexion();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+             PreparedStatement pstm = con.prepareCall("call sp_listar_equipos_pendientes()");
+             ResultSet rs = pstm.executeQuery()) {
+            ResultSetMetaData metadata = rs.getMetaData();
+            for (int i = 1; i <= metadata.getColumnCount(); i++) {
+                modeloTabla.addColumn(metadata.getColumnLabel(i));
+            }
+
             while (rs.next()) {
-                modeloTabla.addRow(new Object[]{
-                    rs.getString("equipo") + " - " + rs.getString("marca_modelo"),
-                    rs.getString("tecnico"),
-                    rs.getString("fecha"),
-                    rs.getString("tipo_mantenimiento"),
-                    rs.getString("estado"),
-                    "$" + String.format("%,.2f", rs.getDouble("costo"))
-                });
+                Object[] fila = new Object[metadata.getColumnCount()];
+                for (int i = 1; i <= metadata.getColumnCount(); i++) {
+                    if ("Costo Estimado".equals(metadata.getColumnLabel(i))) {
+                        fila[i - 1] = "$" + String.format("%,.2f", rs.getDouble(i));
+                    } else {
+                        fila[i - 1] = rs.getObject(i);
+                    }
+                }
+                modeloTabla.addRow(fila);
             }
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al consultar equipos pendientes: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
