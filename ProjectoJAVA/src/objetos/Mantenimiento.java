@@ -63,39 +63,6 @@ public class Mantenimiento {
     }
 
     
-    public static List<Mantenimiento> obtenerMantenimientos() {
-        List<Mantenimiento> lista = new ArrayList<>();
-        String sql = "SELECT id_mantenimiento, id_equipo, equipo, marca_modelo, id_tecnico, tecnico, usuario_tecnico, fecha, id_tipo, tipo_mantenimiento, id_estado, estado, costo, descripcion FROM vw_mantenimientos_realizados";
-        
-        try (Connection con = Conexion.obtenerConexion();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            
-            while (rs.next()) {
-                lista.add(new Mantenimiento(
-                    rs.getInt("id_mantenimiento"),
-                    rs.getInt("id_equipo"),
-                    rs.getString("equipo"),
-                    rs.getString("marca_modelo"),
-                    rs.getInt("id_tecnico"),
-                    rs.getString("tecnico"),
-                    rs.getString("usuario_tecnico"),
-                    rs.getString("fecha"),
-                    rs.getInt("id_tipo"),
-                    rs.getString("tipo_mantenimiento"),
-                    rs.getInt("id_estado"),
-                    rs.getString("estado"),
-                    rs.getDouble("costo"),
-                    rs.getString("descripcion")
-                ));
-            }
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null, "Error al cargar mantenimientos: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
-        }
-        return lista;
-    }
-
-    
     public static List<Mantenimiento> obtenerEquiposPendientes() {
         List<Mantenimiento> lista = new ArrayList<>();
         String sql = "SELECT id_mantenimiento, equipo, marca_modelo, tecnico, fecha, tipo_mantenimiento, estado, costo FROM vw_equipos_pendientes";
@@ -179,99 +146,6 @@ public class Mantenimiento {
     }
 
     
-    public static int obtenerOCrearEquipo(String codigoEquipo) {
-        String sqlBuscar = "SELECT id_equipo FROM equipo WHERE codigo_equipo = ? LIMIT 1";
-        try (Connection con = Conexion.obtenerConexion();
-             PreparedStatement ps = con.prepareStatement(sqlBuscar)) {
-            ps.setString(1, codigoEquipo);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("id_equipo");
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error al buscar equipo: " + e.getMessage());
-        }
-
-        
-        String sqlInsertar = "INSERT INTO equipo (codigo_equipo, marca_modelo, id_tipo_equipo) VALUES (?, ?, 1)";
-        try (Connection con = Conexion.obtenerConexion();
-             PreparedStatement ps = con.prepareStatement(sqlInsertar, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, codigoEquipo);
-            ps.setString(2, "Equipo " + codigoEquipo);
-            ps.executeUpdate();
-            try (ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) {
-                    return rs.getInt(1);
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error al registrar nuevo equipo: " + e.getMessage());
-        }
-        return 1;
-    }
-
-    
-    public static boolean registrarMantenimiento(int idEquipo, int idTecnico, String fecha, int idTipo, int idEstado, double costo, String descripcion) {
-        String sql = "{CALL sp_insertar_mantenimiento(?, ?, ?, ?, ?, ?, ?)}";
-        try (Connection con = Conexion.obtenerConexion();
-             CallableStatement cs = con.prepareCall(sql)) {
-            
-            cs.setInt(1, idEquipo);
-            cs.setInt(2, idTecnico);
-            cs.setString(3, fecha);
-            cs.setInt(4, idTipo);
-            cs.setInt(5, idEstado);
-            cs.setDouble(6, costo);
-            cs.setString(7, descripcion);
-            
-            cs.execute();
-            return true;
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null, "Error al registrar en MySQL: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
-            return false;
-        }
-    }
-
-    
-    public static boolean actualizarMantenimiento(int idMantenimiento, int idEquipo, int idTecnico, String fecha, int idTipo, int idEstado, double costo, String descripcion) {
-        String sql = "{CALL sp_actualizar_mantenimiento(?, ?, ?, ?, ?, ?, ?, ?)}";
-        try (Connection con = Conexion.obtenerConexion();
-             CallableStatement cs = con.prepareCall(sql)) {
-            
-            cs.setInt(1, idMantenimiento);
-            cs.setInt(2, idEquipo);
-            cs.setInt(3, idTecnico);
-            cs.setString(4, fecha);
-            cs.setInt(5, idTipo);
-            cs.setInt(6, idEstado);
-            cs.setDouble(7, costo);
-            cs.setString(8, descripcion);
-            
-            cs.execute();
-            return true;
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null, "Error al actualizar mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
-            return false;
-        }
-    }
-
-    
-    public static boolean eliminarMantenimiento(int idMantenimiento) {
-        String sql = "{CALL sp_eliminar_mantenimiento(?)}";
-        try (Connection con = Conexion.obtenerConexion();
-             CallableStatement cs = con.prepareCall(sql)) {
-            
-            cs.setInt(1, idMantenimiento);
-            cs.execute();
-            return true;
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null, "Error al eliminar mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
-            return false;
-        }
-    }
-
-   
     public static List<ItemCombo> obtenerEquiposCombo() {
         List<ItemCombo> lista = new ArrayList<>();
         String sql = "{CALL sp_combo_equipos()}";
