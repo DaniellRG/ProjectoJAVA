@@ -160,9 +160,9 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
                     cs.execute();
                 }
 
-                cargarDatos();
                 limpiarCampos();
                 JOptionPane.showMessageDialog(this, "Mantenimiento registrado correctamente en MySQL.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                cargarDatos();
             }
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al registrar mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
