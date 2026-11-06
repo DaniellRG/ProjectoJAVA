@@ -21,16 +21,11 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
     private java.util.List<ItemCombo> listaTecnicosCombo;
     private java.util.List<Mantenimiento> listaMantenimientosActual;
     private int idMantenimientoSeleccionado = -1;
-    private usuario.Usuario usuarioLogueado;
+    private final boolean esAdministrador;
 
-    
-    public IFrmMantenimientos() {
-        this(null);
-    }
-
-    public IFrmMantenimientos(usuario.Usuario usuario) {
+    public IFrmMantenimientos(boolean esAdministrador) {
         initComponents();
-        this.usuarioLogueado = usuario;
+        this.esAdministrador = esAdministrador;
         
         agruparRadioButtons();
 
@@ -49,11 +44,9 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
     }
     
     private void aplicarPermisos() {
-        
-        boolean esAdmin = usuarioLogueado != null && usuarioLogueado.esAdministrador();
-        btnEditar.setVisible(esAdmin);
-        btnActualizar.setVisible(esAdmin);
-        btnEliminar.setVisible(esAdmin);
+        btnEditar.setVisible(esAdministrador);
+        btnActualizar.setVisible(esAdministrador);
+        btnEliminar.setVisible(esAdministrador);
     }
     
     
@@ -437,7 +430,7 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
     }//GEN-LAST:event_btnActualizarActionPerformed
 
     private void btnEliminarActionPerformed(java.awt.event.ActionEvent evt) {
-        if (usuarioLogueado != null && !usuarioLogueado.esAdministrador()) {
+        if (!esAdministrador) {
             JOptionPane.showMessageDialog(this, "Solo el Administrador tiene permisos para eliminar registros.", "Acceso Denegado", JOptionPane.WARNING_MESSAGE);
             return;
         }
