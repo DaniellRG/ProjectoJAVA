@@ -4,8 +4,13 @@
  */
 package mantenimiento;
 
-import objetos.Mantenimiento;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import usuario.Conexion;
 
 /**
  *
@@ -52,18 +57,25 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
     }
     
     private void cargarDatosPendientes() {
-        modeloTabla.setRowCount(0); 
+        modeloTabla.setRowCount(0);
+        String sql = "SELECT equipo, marca_modelo, tecnico, fecha, tipo_mantenimiento, estado, costo "
+            + "FROM vw_equipos_pendientes";
 
-        
-        for (Mantenimiento m : Mantenimiento.obtenerEquiposPendientes()) {
-            modeloTabla.addRow(new Object[]{
-                m.getEquipo() + " - " + m.getMarcaModelo(),
-                m.getTecnico(),
-                m.getFecha(),
-                m.getTipoMantenimiento(),
-                m.getEstado(),
-                "$" + String.format("%,.2f", m.getCosto())
-            });
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                modeloTabla.addRow(new Object[]{
+                    rs.getString("equipo") + " - " + rs.getString("marca_modelo"),
+                    rs.getString("tecnico"),
+                    rs.getString("fecha"),
+                    rs.getString("tipo_mantenimiento"),
+                    rs.getString("estado"),
+                    "$" + String.format("%,.2f", rs.getDouble("costo"))
+                });
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al consultar equipos pendientes: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
     }
 

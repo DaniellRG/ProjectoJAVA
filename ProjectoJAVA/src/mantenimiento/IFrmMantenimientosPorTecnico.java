@@ -5,8 +5,14 @@
 package mantenimiento;
 
 import objetos.ItemCombo;
-import objetos.Mantenimiento;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import usuario.Conexion;
 
 /**
  *
@@ -37,10 +43,19 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
     
     
     private void cargarTecnicos() {
-        listaTecnicosCombo = Mantenimiento.obtenerTecnicosCombo();
+        listaTecnicosCombo = new ArrayList<>();
         cmbTecnico.removeAllItems();
-        for (ItemCombo item : listaTecnicosCombo) {
-            cmbTecnico.addItem(item.getTexto());
+
+        try (Connection con = Conexion.obtenerConexion();
+             CallableStatement cs = con.prepareCall("{CALL sp_combo_tecnicos()}");
+             ResultSet rs = cs.executeQuery()) {
+            while (rs.next()) {
+                ItemCombo item = new ItemCombo(rs.getInt("id_usuario"), rs.getString("nombre_completo"));
+                listaTecnicosCombo.add(item);
+                cmbTecnico.addItem(item.getTexto());
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar técnicos: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
     }
     
@@ -70,20 +85,27 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
         }
 
         int idTecnico = listaTecnicosCombo.get(idx).getId();
-        java.util.List<Mantenimiento> lista = Mantenimiento.obtenerMantenimientosPorTecnico(idTecnico);
-
-        for (Mantenimiento m : lista) {
-            modeloTabla.addRow(new Object[]{
-                m.getEquipo(),
-                m.getFecha(),
-                m.getTipoMantenimiento(),
-                m.getEstado(),
-                "$" + String.format("%,.2f", m.getCosto())
-            });
+        int cantidad = 0;
+        try (Connection con = Conexion.obtenerConexion();
+             CallableStatement cs = con.prepareCall("{CALL sp_mantenimientos_por_tecnico(?)}")) {
+            cs.setInt(1, idTecnico);
+            try (ResultSet rs = cs.executeQuery()) {
+                while (rs.next()) {
+                    modeloTabla.addRow(new Object[]{
+                        rs.getString("equipo"),
+                        rs.getString("fecha"),
+                        rs.getString("tipo_mantenimiento"),
+                        rs.getString("estado"),
+                        "$" + String.format("%,.2f", rs.getDouble("costo"))
+                    });
+                    cantidad++;
+                }
+            }
+            lblCantidad.setText("Cantidad de mantenimientos encontrados: " + cantidad);
+        } catch (SQLException e) {
+            lblCantidad.setText("Cantidad de mantenimientos encontrados: 0");
+            JOptionPane.showMessageDialog(this, "Error al consultar mantenimientos por técnico: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
-
-        
-        lblCantidad.setText("Cantidad de mantenimientos encontrados: " + lista.size());
     }
 
     /**

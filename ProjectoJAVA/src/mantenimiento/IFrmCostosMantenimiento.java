@@ -5,7 +5,11 @@
 package mantenimiento;
 
 import usuario.Conexion;
-import objetos.Mantenimiento;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -51,13 +55,13 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
     }
     
     private void calcularCostosTotales() {
-        modeloTabla.setRowCount(0); // Limpiar filas anteriores
+        modeloTabla.setRowCount(0);
+        lblTotalCostos.setText("Costo Total General Invertido: no disponible");
 
         String sql = "SELECT equipo, marca_modelo, cantidad_servicios, costo_acumulado FROM vw_costos_por_equipo";
-        try (java.sql.Connection con = Conexion.obtenerConexion();
-             java.sql.PreparedStatement ps = con.prepareStatement(sql);
-             java.sql.ResultSet rs = ps.executeQuery()) {
-             
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 modeloTabla.addRow(new Object[]{
                     rs.getString("equipo"),
@@ -66,13 +70,17 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
                     "$" + String.format("%,.2f", rs.getDouble("costo_acumulado"))
                 });
             }
-        } catch (java.sql.SQLException e) {
-            javax.swing.JOptionPane.showMessageDialog(this, "Error al cargar costos por equipo: " + e.getMessage(), "Error BD", javax.swing.JOptionPane.ERROR_MESSAGE);
-        }
 
-        
-        double costoTotal = Mantenimiento.obtenerCostoTotalGeneral();
-        lblTotalCostos.setText("Costo Total General Invertido: $" + String.format("%,.2f", costoTotal));
+            try (PreparedStatement psTotal = con.prepareStatement("SELECT fn_costo_total_general() AS total");
+                 ResultSet rsTotal = psTotal.executeQuery()) {
+                if (!rsTotal.next()) {
+                    throw new SQLException("La función de costo total no devolvió resultados.");
+                }
+                lblTotalCostos.setText("Costo Total General Invertido: $" + String.format("%,.2f", rsTotal.getDouble("total")));
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar costos de mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /**
