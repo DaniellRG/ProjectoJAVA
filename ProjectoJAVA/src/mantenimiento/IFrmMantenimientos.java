@@ -39,9 +39,6 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
 
      
         this.setClosable(true);
-        this.setIconifiable(true);
-        this.setMaximizable(true);
-        this.setResizable(true);
         this.setTitle("Registro e Informe de Mantenimientos Realizados");
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 

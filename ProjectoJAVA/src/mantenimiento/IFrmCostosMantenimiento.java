@@ -29,9 +29,6 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
         initComponents();
         
         this.setClosable(true);
-        this.setIconifiable(true);
-        this.setMaximizable(true);
-        this.setResizable(true);
         this.setTitle("Informe de Costos Invertidos en Mantenimiento (Solo Administrador)");
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 

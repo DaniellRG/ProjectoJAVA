@@ -30,9 +30,6 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
         initComponents();
         
         this.setClosable(true);
-        this.setIconifiable(true);
-        this.setMaximizable(true);
-        this.setResizable(true);
         this.setTitle("Informe de Mantenimientos por Técnico");
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
