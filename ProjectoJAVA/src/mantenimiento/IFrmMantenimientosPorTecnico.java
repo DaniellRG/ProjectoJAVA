@@ -28,8 +28,6 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
     
     public IFrmMantenimientosPorTecnico() {
         initComponents();
-        tblTecnico.setDefaultEditor(Object.class, null);
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         if (cargarTecnicos()) {
             consultarPorTecnico();
@@ -57,7 +55,8 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
     }
     
     private void consultarPorTecnico() {
-        DefaultTableModel modeloTabla = new DefaultTableModel();
+        DefaultTableModel modeloTabla = (DefaultTableModel) tblTecnico.getModel();
+        modeloTabla.setRowCount(0);
 
         int idx = cmbTecnico.getSelectedIndex();
         int idTecnico = 0;
@@ -70,9 +69,13 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
             pstm.setInt(1, idTecnico);
             try (ResultSet rs = pstm.executeQuery()) {
                 ResultSetMetaData metadata = rs.getMetaData();
-                for (int i = 2; i <= 6; i++) {
-                    modeloTabla.addColumn(metadata.getColumnLabel(i));
-                }
+                modeloTabla.setColumnIdentifiers(new Object[]{
+                    metadata.getColumnLabel(2),
+                    metadata.getColumnLabel(3),
+                    metadata.getColumnLabel(4),
+                    metadata.getColumnLabel(5),
+                    metadata.getColumnLabel(6)
+                });
 
                 while (rs.next()) {
                     modeloTabla.addRow(new Object[]{
@@ -87,7 +90,6 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al consultar mantenimientos por técnico: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
-        tblTecnico.setModel(modeloTabla);
     }
 
     /**
@@ -104,6 +106,8 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
         jScrollPane1 = new javax.swing.JScrollPane();
         tblTecnico = new javax.swing.JTable();
 
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
         cmbTecnico.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
         btnBuscar.setFont(new java.awt.Font("Segoe UI Black", 0, 14)); // NOI18N
@@ -112,8 +116,19 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
 
         tblTecnico.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {},
-            new String [] {}
-        ));
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4", "Title 5"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false
+            };
+
+            @Override
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit[columnIndex];
+            }
+        });
         jScrollPane1.setViewportView(tblTecnico);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());

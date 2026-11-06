@@ -26,22 +26,26 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
      */
     public IFrmEquiposPendientes() {
         initComponents();
-        tblPendientes.setDefaultEditor(Object.class, null);
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         cargarDatosPendientes();
     }
     
     private void cargarDatosPendientes() {
-        DefaultTableModel modeloTabla = new DefaultTableModel();
+        DefaultTableModel modeloTabla = (DefaultTableModel) tblPendientes.getModel();
+        modeloTabla.setRowCount(0);
 
         try (Connection con = Conexion.obtenerConexion();
              PreparedStatement pstm = con.prepareCall("call sp_listar_equipos_pendientes()");
              ResultSet rs = pstm.executeQuery()) {
             ResultSetMetaData metadata = rs.getMetaData();
-            for (int i = 1; i <= metadata.getColumnCount(); i++) {
-                modeloTabla.addColumn(metadata.getColumnLabel(i));
-            }
+            modeloTabla.setColumnIdentifiers(new Object[]{
+                metadata.getColumnLabel(1),
+                metadata.getColumnLabel(2),
+                metadata.getColumnLabel(3),
+                metadata.getColumnLabel(4),
+                metadata.getColumnLabel(5),
+                metadata.getColumnLabel(6)
+            });
 
             while (rs.next()) {
                 modeloTabla.addRow(new Object[]{
@@ -56,7 +60,6 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al consultar equipos pendientes: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
-        tblPendientes.setModel(modeloTabla);
     }
 
     /**
@@ -73,6 +76,8 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
         jScrollPane1 = new javax.swing.JScrollPane();
         tblPendientes = new javax.swing.JTable();
 
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
         jLabel1.setFont(new java.awt.Font("Segoe UI Black", 0, 24)); // NOI18N
         jLabel1.setText("Listado de Equipos Pendientes / Próximos");
 
@@ -81,16 +86,20 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
         btnRefrescar.addActionListener(this::btnRefrescarActionPerformed);
 
         tblPendientes.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
+            new Object [][] {},
             new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
+                "Title 1", "Title 2", "Title 3", "Title 4", "Title 5", "Title 6"
             }
-        ));
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false
+            };
+
+            @Override
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit[columnIndex];
+            }
+        });
         jScrollPane1.setViewportView(tblPendientes);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());

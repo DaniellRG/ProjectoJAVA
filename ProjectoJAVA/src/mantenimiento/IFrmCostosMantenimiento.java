@@ -26,23 +26,25 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
      */
     public IFrmCostosMantenimiento() {
         initComponents();
-        tblCostos.setDefaultEditor(Object.class, null);
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         calcularCostosTotales();
     }
     
     private void calcularCostosTotales() {
-        DefaultTableModel modeloTabla = new DefaultTableModel();
+        DefaultTableModel modeloTabla = (DefaultTableModel) tblCostos.getModel();
+        modeloTabla.setRowCount(0);
         lblTotalCostos.setText("Costo Total General Invertido: no disponible");
 
         try (Connection con = Conexion.obtenerConexion();
              PreparedStatement pstm = con.prepareCall("call sp_listar_costos_por_equipo()");
              ResultSet rs = pstm.executeQuery()) {
             ResultSetMetaData metadata = rs.getMetaData();
-            for (int i = 1; i <= metadata.getColumnCount(); i++) {
-                modeloTabla.addColumn(metadata.getColumnLabel(i));
-            }
+            modeloTabla.setColumnIdentifiers(new Object[]{
+                metadata.getColumnLabel(1),
+                metadata.getColumnLabel(2),
+                metadata.getColumnLabel(3),
+                metadata.getColumnLabel(4)
+            });
 
             while (rs.next()) {
                 modeloTabla.addRow(new Object[]{
@@ -64,7 +66,6 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al cargar costos de mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
-        tblCostos.setModel(modeloTabla);
     }
 
     /**
@@ -82,6 +83,8 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
         jScrollPane1 = new javax.swing.JScrollPane();
         tblCostos = new javax.swing.JTable();
 
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
         lblTitulo.setFont(new java.awt.Font("Segoe UI Black", 0, 24)); // NOI18N
         lblTitulo.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         lblTitulo.setText("Resumen Financiero de Mantenimientos");
@@ -93,16 +96,20 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
         btnRefrescar.addActionListener(this::btnRefrescarActionPerformed);
 
         tblCostos.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
+            new Object [][] {},
             new String [] {
                 "Title 1", "Title 2", "Title 3", "Title 4"
             }
-        ));
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false
+            };
+
+            @Override
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit[columnIndex];
+            }
+        });
         jScrollPane1.setViewportView(tblCostos);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());

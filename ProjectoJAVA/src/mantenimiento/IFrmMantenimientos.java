@@ -31,12 +31,9 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
 
     public IFrmMantenimientos(boolean esAdministrador) {
         initComponents();
-        tblMantenimientos.setDefaultEditor(Object.class, null);
         this.esAdministrador = esAdministrador;
         
         agruparRadioButtons();
-
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         cargarTecnicos();
         cargarDatos();
@@ -73,20 +70,23 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
     }
     
     private void cargarDatos() {
-        DefaultTableModel modeloTabla = new DefaultTableModel();
+        DefaultTableModel modeloTabla = (DefaultTableModel) tblMantenimientos.getModel();
+        modeloTabla.setRowCount(0);
         listaMantenimientosActual = new ArrayList<>();
 
         try (Connection con = Conexion.obtenerConexion();
              PreparedStatement pstm = con.prepareCall("call sp_listar_mantenimientos()");
              ResultSet rs = pstm.executeQuery()) {
             ResultSetMetaData metadata = rs.getMetaData();
-            modeloTabla.addColumn(metadata.getColumnLabel(1));
-            modeloTabla.addColumn(metadata.getColumnLabel(3));
-            modeloTabla.addColumn(metadata.getColumnLabel(6));
-            modeloTabla.addColumn(metadata.getColumnLabel(8));
-            modeloTabla.addColumn(metadata.getColumnLabel(10));
-            modeloTabla.addColumn(metadata.getColumnLabel(12));
-            modeloTabla.addColumn(metadata.getColumnLabel(13));
+            modeloTabla.setColumnIdentifiers(new Object[]{
+                metadata.getColumnLabel(1),
+                metadata.getColumnLabel(3),
+                metadata.getColumnLabel(6),
+                metadata.getColumnLabel(8),
+                metadata.getColumnLabel(10),
+                metadata.getColumnLabel(12),
+                metadata.getColumnLabel(13)
+            });
 
             while (rs.next()) {
                 Mantenimiento mantenimiento = new Mantenimiento(
@@ -119,7 +119,6 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al cargar mantenimientos: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
-        tblMantenimientos.setModel(modeloTabla);
     }
     
     private void registrarMantenimiento() {
@@ -219,21 +218,27 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
         btnActualizar = new javax.swing.JButton();
         btnEliminar = new javax.swing.JButton();
 
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
         btnGuardar.setFont(new java.awt.Font("Segoe UI Black", 0, 14)); // NOI18N
         btnGuardar.setText("Registrar Mantenimiento");
         btnGuardar.addActionListener(this::btnGuardarActionPerformed);
 
         tblMantenimientos.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
+            new Object [][] {},
             new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
+                "Title 1", "Title 2", "Title 3", "Title 4", "Title 5", "Title 6", "Title 7"
             }
-        ));
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false
+            };
+
+            @Override
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit[columnIndex];
+            }
+        });
         jScrollPane1.setViewportView(tblMantenimientos);
 
         btgTipo.add(rbtPreventivo);
