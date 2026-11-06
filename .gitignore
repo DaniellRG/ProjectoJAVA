@@ -2,6 +2,7 @@
 **/build/
 **/dist/
 **/nbproject/private/
+.worktrees/
 
 # Unzipped connector source (only jar is required)
 **/mysql-connector-j-26.7.0/src/
