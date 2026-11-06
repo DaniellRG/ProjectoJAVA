@@ -1,0 +1,7 @@
+# NetBeans build output and private settings
+/build/
+/dist/
+nbproject/private/
+
+# Unzipped connector source (only jar is required)
+mysql-connector-j-26.7.0/src/

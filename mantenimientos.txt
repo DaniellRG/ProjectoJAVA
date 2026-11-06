@@ -1,0 +1,4 @@
+PC-01 Dell Optiplex;DANIEL;2026-10-10;Preventivo;Realizado;150000.0
+Laptop Lenovo ThinkPad;YTSUNODA;2026-10-12;Correctivo;Pendiente;320000.0
+PC-02 HP ProDesk;LLAWSON;2026-10-15;Preventivo;Próximo;120000.0
+PC-QEQWDKOQWMDQ;LLAWSON;2019-11-11;Correctivo;Pendiente;25000.0
