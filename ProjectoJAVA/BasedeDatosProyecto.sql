@@ -208,6 +208,17 @@ begin
     end if;
 end//
 
+-- validacion para que el costo tampoco sea negativo al actualizar
+create trigger trg_mantenimiento_before_update
+before update on mantenimiento
+for each row
+begin
+    if new.costo < 0 then
+        signal sqlstate '45000'
+        set message_text = 'Error: El costo del mantenimiento no puede ser negativo.';
+    end if;
+end//
+
 -- auditoria al registrar un nuevo mantenimiento
 create trigger trg_mantenimiento_after_insert
 after insert on mantenimiento
@@ -330,6 +341,15 @@ create procedure sp_actualizar_mantenimiento(
     in p_descripcion text
 )
 begin
+    if not exists (
+        select 1
+        from mantenimiento
+        where id_mantenimiento = p_id_mantenimiento
+    ) then
+        signal sqlstate '45000'
+        set message_text = 'Error: El mantenimiento no existe.';
+    end if;
+
     update mantenimiento
     set 
         id_equipo = p_id_equipo,
@@ -347,6 +367,15 @@ create procedure sp_eliminar_mantenimiento(
     in p_id_mantenimiento int
 )
 begin
+    if not exists (
+        select 1
+        from mantenimiento
+        where id_mantenimiento = p_id_mantenimiento
+    ) then
+        signal sqlstate '45000'
+        set message_text = 'Error: El mantenimiento no existe.';
+    end if;
+
     delete from mantenimiento where id_mantenimiento = p_id_mantenimiento;
 end//
 
