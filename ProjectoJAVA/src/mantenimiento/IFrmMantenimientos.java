@@ -24,7 +24,6 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
     
     private static final long serialVersionUID = 1L;
     
-    private DefaultTableModel modeloTabla;
     private java.util.List<ItemCombo> listaTecnicosCombo;
     private java.util.List<Mantenimiento> listaMantenimientosActual;
     private int idMantenimientoSeleccionado = -1;
@@ -41,7 +40,6 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
         this.setTitle("Registro e Informe de Mantenimientos Realizados");
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        configurarTabla();
         cargarTecnicos();
         cargarDatos();
         aplicarPermisos();
@@ -77,18 +75,25 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
     }
     
     private void cargarDatos() {
-        modeloTabla.setRowCount(0);
-        modeloTabla.setColumnCount(0);
+        DefaultTableModel modeloTabla = new DefaultTableModel() {
+            @Override
+            public boolean isCellEditable(int fila, int columna) {
+                return false;
+            }
+        };
         listaMantenimientosActual = new ArrayList<>();
 
         try (Connection con = Conexion.obtenerConexion();
              PreparedStatement pstm = con.prepareCall("call sp_listar_mantenimientos()");
              ResultSet rs = pstm.executeQuery()) {
             ResultSetMetaData metadata = rs.getMetaData();
-            int[] columnasVisibles = {1, 3, 6, 8, 10, 12, 13};
-            for (int columna : columnasVisibles) {
-                modeloTabla.addColumn(metadata.getColumnLabel(columna));
-            }
+            modeloTabla.addColumn(metadata.getColumnLabel(1));
+            modeloTabla.addColumn(metadata.getColumnLabel(3));
+            modeloTabla.addColumn(metadata.getColumnLabel(6));
+            modeloTabla.addColumn(metadata.getColumnLabel(8));
+            modeloTabla.addColumn(metadata.getColumnLabel(10));
+            modeloTabla.addColumn(metadata.getColumnLabel(12));
+            modeloTabla.addColumn(metadata.getColumnLabel(13));
 
             while (rs.next()) {
                 Mantenimiento mantenimiento = new Mantenimiento(
@@ -121,6 +126,7 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al cargar mantenimientos: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
+        tblMantenimientos.setModel(modeloTabla);
     }
     
     private void registrarMantenimiento() {
@@ -188,17 +194,6 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
         txtEquipo.requestFocus();
     }
     
-    private void configurarTabla() {
-        
-        modeloTabla = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
-        tblMantenimientos.setModel(modeloTabla);
-    }
-
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always

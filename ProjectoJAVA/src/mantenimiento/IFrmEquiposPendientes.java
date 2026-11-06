@@ -21,8 +21,6 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
     
     private static final long serialVersionUID = 1L;
     
-    private DefaultTableModel modeloTabla;
-
     /**
      * Creates new form IFrmEquiposPendientes
      */
@@ -33,24 +31,16 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
         this.setTitle("Informe de Equipos Pendientes / Próximos a Mantenimiento");
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        configurarTabla();
         cargarDatosPendientes();
     }
     
-    private void configurarTabla() {
-        
-        modeloTabla = new DefaultTableModel() {
+    private void cargarDatosPendientes() {
+        DefaultTableModel modeloTabla = new DefaultTableModel() {
             @Override
             public boolean isCellEditable(int fila, int columna) {
                 return false;
             }
         };
-        tblPendientes.setModel(modeloTabla);
-    }
-    
-    private void cargarDatosPendientes() {
-        modeloTabla.setRowCount(0);
-        modeloTabla.setColumnCount(0);
 
         try (Connection con = Conexion.obtenerConexion();
              PreparedStatement pstm = con.prepareCall("call sp_listar_equipos_pendientes()");
@@ -61,19 +51,19 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
             }
 
             while (rs.next()) {
-                Object[] fila = new Object[metadata.getColumnCount()];
-                for (int i = 1; i <= metadata.getColumnCount(); i++) {
-                    if ("Costo Estimado".equals(metadata.getColumnLabel(i))) {
-                        fila[i - 1] = "$" + String.format("%,.2f", rs.getDouble(i));
-                    } else {
-                        fila[i - 1] = rs.getObject(i);
-                    }
-                }
-                modeloTabla.addRow(fila);
+                modeloTabla.addRow(new Object[]{
+                    rs.getObject(1),
+                    rs.getObject(2),
+                    rs.getObject(3),
+                    rs.getObject(4),
+                    rs.getObject(5),
+                    "$" + String.format("%,.2f", rs.getDouble(6))
+                });
             }
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al consultar equipos pendientes: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
+        tblPendientes.setModel(modeloTabla);
     }
 
     /**

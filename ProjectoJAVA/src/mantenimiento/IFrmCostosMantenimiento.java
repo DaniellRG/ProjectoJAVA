@@ -21,8 +21,6 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
     
     private static final long serialVersionUID = 1L;
     
-    private DefaultTableModel modeloTabla;
-
     /**
      * Creates new form IFrmCostosMantenimiento
      */
@@ -33,24 +31,16 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
         this.setTitle("Informe de Costos Invertidos en Mantenimiento (Solo Administrador)");
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        configurarTabla();
         calcularCostosTotales();
     }
     
-    private void configurarTabla() {
-        
-        modeloTabla = new DefaultTableModel() {
+    private void calcularCostosTotales() {
+        DefaultTableModel modeloTabla = new DefaultTableModel() {
             @Override
             public boolean isCellEditable(int fila, int columna) {
                 return false;
             }
         };
-        tblCostos.setModel(modeloTabla);
-    }
-    
-    private void calcularCostosTotales() {
-        modeloTabla.setRowCount(0);
-        modeloTabla.setColumnCount(0);
         lblTotalCostos.setText("Costo Total General Invertido: no disponible");
 
         try (Connection con = Conexion.obtenerConexion();
@@ -62,15 +52,12 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
             }
 
             while (rs.next()) {
-                Object[] fila = new Object[metadata.getColumnCount()];
-                for (int i = 1; i <= metadata.getColumnCount(); i++) {
-                    if ("Costo Acumulado ($)".equals(metadata.getColumnLabel(i))) {
-                        fila[i - 1] = "$" + String.format("%,.2f", rs.getDouble(i));
-                    } else {
-                        fila[i - 1] = rs.getObject(i);
-                    }
-                }
-                modeloTabla.addRow(fila);
+                modeloTabla.addRow(new Object[]{
+                    rs.getObject(1),
+                    rs.getObject(2),
+                    rs.getObject(3),
+                    "$" + String.format("%,.2f", rs.getDouble(4))
+                });
             }
 
             try (PreparedStatement pstmTotal = con.prepareCall("call sp_costo_total_general()");
@@ -84,6 +71,7 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Error al cargar costos de mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
+        tblCostos.setModel(modeloTabla);
     }
 
     /**
