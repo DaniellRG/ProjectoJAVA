@@ -27,9 +27,6 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
     public IFrmCostosMantenimiento() {
         initComponents();
         tblCostos.setDefaultEditor(Object.class, null);
-        
-        this.setClosable(true);
-        this.setTitle("Informe de Costos Invertidos en Mantenimiento (Solo Administrador)");
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         calcularCostosTotales();

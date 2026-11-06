@@ -36,9 +36,6 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
         
         agruparRadioButtons();
 
-     
-        this.setClosable(true);
-        this.setTitle("Registro e Informe de Mantenimientos Realizados");
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         cargarTecnicos();

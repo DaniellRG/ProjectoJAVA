@@ -29,9 +29,6 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
     public IFrmMantenimientosPorTecnico() {
         initComponents();
         tblTecnico.setDefaultEditor(Object.class, null);
-        
-        this.setClosable(true);
-        this.setTitle("Informe de Mantenimientos por Técnico");
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         if (cargarTecnicos()) {

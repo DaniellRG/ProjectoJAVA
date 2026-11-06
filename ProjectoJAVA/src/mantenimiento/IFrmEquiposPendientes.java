@@ -27,9 +27,6 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
     public IFrmEquiposPendientes() {
         initComponents();
         tblPendientes.setDefaultEditor(Object.class, null);
-        
-        this.setClosable(true);
-        this.setTitle("Informe de Equipos Pendientes / Próximos a Mantenimiento");
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         cargarDatosPendientes();

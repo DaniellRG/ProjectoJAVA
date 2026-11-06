@@ -29,9 +29,6 @@ public class FrmMain extends javax.swing.JFrame {
         
         this.setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        
-        this.setTitle("Sistema de Mantenimiento - Usuario: " + usuario + " [" + nombreRol + "]");
-
         aplicarPermisos();
     }
     
