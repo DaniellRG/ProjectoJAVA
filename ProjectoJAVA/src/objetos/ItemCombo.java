@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package mantenimiento;
+package objetos;
 
 /**
  * Clase auxiliar para almacenar el ID y la descripción en los JComboBox de Swing.

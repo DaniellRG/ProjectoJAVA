@@ -47,7 +47,7 @@ public class FrmLogin extends javax.swing.JFrame {
             
             if (usuarioActual != null){
                 
-                mantenimiento.FrmMain main = new mantenimiento.FrmMain(usuarioActual);
+                FrmMain main = new FrmMain(usuarioActual);
                 main.setVisible(true);
                 this.dispose();
                 

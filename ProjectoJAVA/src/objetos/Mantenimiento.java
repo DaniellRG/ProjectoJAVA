@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package mantenimiento;
+package objetos;
 
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -13,6 +13,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JOptionPane;
+import usuario.Conexion;
 
 /**
  * Modelo de negocio y acceso a datos para Mantenimientos (conectado a MySQL).

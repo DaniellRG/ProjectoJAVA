@@ -4,6 +4,8 @@
  */
 package mantenimiento;
 
+import objetos.ItemCombo;
+import objetos.Mantenimiento;
 import javax.swing.table.DefaultTableModel;
 
 /**

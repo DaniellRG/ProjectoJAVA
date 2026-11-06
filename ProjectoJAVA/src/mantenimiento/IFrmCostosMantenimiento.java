@@ -4,6 +4,8 @@
  */
 package mantenimiento;
 
+import usuario.Conexion;
+import objetos.Mantenimiento;
 import javax.swing.table.DefaultTableModel;
 
 /**
