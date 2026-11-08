@@ -4,7 +4,14 @@
  */
 package mantenimiento;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import usuario.Conexion;
 
 /**
  *
@@ -14,55 +21,44 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
     
     private static final long serialVersionUID = 1L;
     
-    private DefaultTableModel modeloTabla;
-
     /**
      * Creates new form IFrmEquiposPendientes
      */
     public IFrmEquiposPendientes() {
         initComponents();
-        
-        this.setClosable(true);
-        this.setIconifiable(true);
-        this.setMaximizable(true);
-        this.setResizable(true);
-        this.setTitle("Informe de Equipos Pendientes / Próximos a Mantenimiento");
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        configurarTabla();
         cargarDatosPendientes();
     }
     
-    private void configurarTabla() {
-        
-        modeloTabla = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
-        modeloTabla.addColumn("Equipo");
-        modeloTabla.addColumn("Técnico Asignado");
-        modeloTabla.addColumn("Fecha Programada");
-        modeloTabla.addColumn("Tipo");
-        modeloTabla.addColumn("Estado");
-        modeloTabla.addColumn("Costo Estimado");
-        tblPendientes.setModel(modeloTabla);
-    }
-    
     private void cargarDatosPendientes() {
-        modeloTabla.setRowCount(0); 
+        DefaultTableModel modeloTabla = (DefaultTableModel) tblPendientes.getModel();
+        modeloTabla.setRowCount(0);
 
-        
-        for (Mantenimiento m : Mantenimiento.obtenerEquiposPendientes()) {
-            modeloTabla.addRow(new Object[]{
-                m.getEquipo() + " - " + m.getMarcaModelo(),
-                m.getTecnico(),
-                m.getFecha(),
-                m.getTipoMantenimiento(),
-                m.getEstado(),
-                "$" + String.format("%,.2f", m.getCosto())
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement pstm = con.prepareCall("call sp_listar_equipos_pendientes()");
+             ResultSet rs = pstm.executeQuery()) {
+            ResultSetMetaData metadata = rs.getMetaData();
+            modeloTabla.setColumnIdentifiers(new Object[]{
+                metadata.getColumnLabel(1),
+                metadata.getColumnLabel(2),
+                metadata.getColumnLabel(3),
+                metadata.getColumnLabel(4),
+                metadata.getColumnLabel(5),
+                metadata.getColumnLabel(6)
             });
+
+            while (rs.next()) {
+                modeloTabla.addRow(new Object[]{
+                    rs.getObject(1),
+                    rs.getObject(2),
+                    rs.getObject(3),
+                    rs.getObject(4),
+                    rs.getObject(5),
+                    "$" + String.format("%,.2f", rs.getDouble(6))
+                });
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al consultar equipos pendientes: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -80,6 +76,8 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
         jScrollPane1 = new javax.swing.JScrollPane();
         tblPendientes = new javax.swing.JTable();
 
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
         jLabel1.setFont(new java.awt.Font("Segoe UI Black", 0, 24)); // NOI18N
         jLabel1.setText("Listado de Equipos Pendientes / Próximos");
 
@@ -88,16 +86,20 @@ public class IFrmEquiposPendientes extends javax.swing.JInternalFrame {
         btnRefrescar.addActionListener(this::btnRefrescarActionPerformed);
 
         tblPendientes.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
+            new Object [][] {},
             new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
+                "Title 1", "Title 2", "Title 3", "Title 4", "Title 5", "Title 6"
             }
-        ));
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false
+            };
+
+            @Override
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit[columnIndex];
+            }
+        });
         jScrollPane1.setViewportView(tblPendientes);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());

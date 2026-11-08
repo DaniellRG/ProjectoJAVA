@@ -4,7 +4,10 @@
  */
 package usuario;
 
-import java.util.ArrayList;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import javax.swing.JOptionPane;
 
 /**
@@ -17,8 +20,6 @@ public class FrmLogin extends javax.swing.JFrame {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(FrmLogin.class.getName());
     
-    private Usuario usuarioActual;
-
     /**
      * Creates new form FrmLogin
      */
@@ -34,32 +35,39 @@ public class FrmLogin extends javax.swing.JFrame {
     }
     
     public void realizarInicioSesion(){
-        try{
-            String usuarioTexto = txtUsuario.getText().toUpperCase().trim();
-            String claveTexto = String.valueOf(txtClave.getPassword()).trim();
-            
-            if (usuarioTexto.isEmpty() || claveTexto.isEmpty()){
-                JOptionPane.showMessageDialog(this, "Debe ingresar usuario y contraseña.", "Campos Incompletos", JOptionPane.WARNING_MESSAGE);
-                return;
+        String usuarioTexto = txtUsuario.getText().toUpperCase().trim();
+        String claveTexto = String.valueOf(txtClave.getPassword()).trim();
+
+        if (usuarioTexto.isEmpty() || claveTexto.isEmpty()){
+            JOptionPane.showMessageDialog(this, "Debe ingresar usuario y contraseña.", "Campos Incompletos", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement pstm = con.prepareCall("call sp_iniciar_sesion(?, ?)")) {
+            pstm.setString(1, usuarioTexto);
+            pstm.setString(2, claveTexto);
+
+            try (ResultSet rs = pstm.executeQuery()) {
+                if (rs.next()) {
+                    FrmMain main = new FrmMain(
+                        rs.getString("usuario"),
+                        rs.getString("nombre_rol"),
+                        rs.getInt("id_rol") == 1
+                    );
+                    main.setVisible(true);
+                    this.dispose();
+                    return;
+                }
             }
-            
-            usuarioActual = Usuario.autenticar(usuarioTexto, claveTexto);
-            
-            if (usuarioActual != null){
-                
-                mantenimiento.FrmMain main = new mantenimiento.FrmMain(usuarioActual);
-                main.setVisible(true);
-                this.dispose();
-                
-            }else {
-                txtClave.setText("");
-                txtClave.requestFocusInWindow();
-                JOptionPane.showMessageDialog(this, "Usuario y/o Contraseña incorrectos.", "Error de Autenticación", JOptionPane.ERROR_MESSAGE);
-            }
-        }catch (Exception e){
+
+            txtClave.setText("");
+            txtClave.requestFocusInWindow();
+            JOptionPane.showMessageDialog(this, "Usuario y/o Contraseña incorrectos.", "Error de Autenticación", JOptionPane.ERROR_MESSAGE);
+        } catch (SQLException e) {
             logger.log(java.util.logging.Level.SEVERE, "Error al iniciar sesión", e);
-            JOptionPane.showMessageDialog(this, "Ocurrió un error al iniciar sesión.", "Error del Sistema", JOptionPane.ERROR_MESSAGE);
-            
+            txtClave.setText("");
+            JOptionPane.showMessageDialog(this, "No se pudo conectar con la base de datos.", "Error del Sistema", JOptionPane.ERROR_MESSAGE);
         }
     }
 

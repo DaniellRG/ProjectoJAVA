@@ -4,6 +4,15 @@
  */
 package mantenimiento;
 
+import objetos.ItemCombo;
+import objetos.Mantenimiento;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import usuario.Conexion;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 
@@ -15,51 +24,43 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
     
     private static final long serialVersionUID = 1L;
     
-    private DefaultTableModel modeloTabla;
     private java.util.List<ItemCombo> listaTecnicosCombo;
     private java.util.List<Mantenimiento> listaMantenimientosActual;
     private int idMantenimientoSeleccionado = -1;
-    private usuario.Usuario usuarioLogueado;
+    private final boolean esAdministrador;
 
-    
-    public IFrmMantenimientos() {
-        this(null);
-    }
-
-    public IFrmMantenimientos(usuario.Usuario usuario) {
+    public IFrmMantenimientos(boolean esAdministrador) {
         initComponents();
-        this.usuarioLogueado = usuario;
+        this.esAdministrador = esAdministrador;
         
         agruparRadioButtons();
 
-     
-        this.setClosable(true);
-        this.setIconifiable(true);
-        this.setMaximizable(true);
-        this.setResizable(true);
-        this.setTitle("Registro e Informe de Mantenimientos Realizados");
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-
-        configurarTabla();
         cargarTecnicos();
         cargarDatos();
         aplicarPermisos();
     }
     
     private void aplicarPermisos() {
-        
-        boolean esAdmin = usuarioLogueado != null && usuarioLogueado.esAdministrador();
-        btnEditar.setVisible(esAdmin);
-        btnActualizar.setVisible(esAdmin);
-        btnEliminar.setVisible(esAdmin);
+        btnEditar.setVisible(esAdministrador);
+        btnActualizar.setVisible(esAdministrador);
+        btnEliminar.setVisible(esAdministrador);
     }
     
     
     private void cargarTecnicos() {
-        listaTecnicosCombo = Mantenimiento.obtenerTecnicosCombo();
+        listaTecnicosCombo = new ArrayList<>();
         cmbTecnico.removeAllItems();
-        for (ItemCombo item : listaTecnicosCombo) {
-            cmbTecnico.addItem(item.getTexto());
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement pstm = con.prepareCall("call sp_combo_tecnicos()");
+             ResultSet rs = pstm.executeQuery()) {
+            while (rs.next()) {
+                ItemCombo item = new ItemCombo(rs.getInt("id_usuario"), rs.getString("nombre_completo"));
+                listaTecnicosCombo.add(item);
+                cmbTecnico.addItem(item.getTexto());
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar técnicos: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
     }
     
@@ -69,18 +70,54 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
     }
     
     private void cargarDatos() {
-        modeloTabla.setRowCount(0); // Limpiar tabla
-        listaMantenimientosActual = Mantenimiento.obtenerMantenimientos();
-        for (Mantenimiento m : listaMantenimientosActual) {
-            modeloTabla.addRow(new Object[]{
-                m.getIdMantenimiento(),
-                m.getEquipo(),
-                m.getTecnico(),
-                m.getFecha(),
-                m.getTipoMantenimiento(),
-                m.getEstado(),
-                "$" + String.format("%,.2f", m.getCosto())
+        DefaultTableModel modeloTabla = (DefaultTableModel) tblMantenimientos.getModel();
+        modeloTabla.setRowCount(0);
+        listaMantenimientosActual = new ArrayList<>();
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement pstm = con.prepareCall("call sp_listar_mantenimientos()");
+             ResultSet rs = pstm.executeQuery()) {
+            ResultSetMetaData metadata = rs.getMetaData();
+            modeloTabla.setColumnIdentifiers(new Object[]{
+                metadata.getColumnLabel(1),
+                metadata.getColumnLabel(3),
+                metadata.getColumnLabel(6),
+                metadata.getColumnLabel(8),
+                metadata.getColumnLabel(10),
+                metadata.getColumnLabel(12),
+                metadata.getColumnLabel(13)
             });
+
+            while (rs.next()) {
+                Mantenimiento mantenimiento = new Mantenimiento(
+                    rs.getInt(1),
+                    rs.getInt(2),
+                    rs.getString(3),
+                    rs.getString(4),
+                    rs.getInt(5),
+                    rs.getString(6),
+                    rs.getString(7),
+                    rs.getString(8),
+                    rs.getInt(9),
+                    rs.getString(10),
+                    rs.getInt(11),
+                    rs.getString(12),
+                    rs.getDouble(13),
+                    rs.getString(14)
+                );
+                listaMantenimientosActual.add(mantenimiento);
+                modeloTabla.addRow(new Object[]{
+                    mantenimiento.getIdMantenimiento(),
+                    mantenimiento.getEquipo(),
+                    mantenimiento.getTecnico(),
+                    mantenimiento.getFecha(),
+                    mantenimiento.getTipoMantenimiento(),
+                    mantenimiento.getEstado(),
+                    "$" + String.format("%,.2f", mantenimiento.getCosto())
+                });
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar mantenimientos: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
     }
     
@@ -106,18 +143,29 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
                 return;
             }
 
-            int idEquipo = Mantenimiento.obtenerOCrearEquipo(equipo);
-            int idTecnico = listaTecnicosCombo.get(idxTecnico).getId();
-            int idTipo = rbtPreventivo.isSelected() ? 1 : 2;
-            int idEstado = rbtRealizado.isSelected() ? 1 : (rbtPendiente.isSelected() ? 2 : 3);
+            try (Connection con = Conexion.obtenerConexion()) {
+                int idEquipo = obtenerOCrearEquipo(con, equipo);
+                int idTecnico = listaTecnicosCombo.get(idxTecnico).getId();
+                int idTipo = rbtPreventivo.isSelected() ? 1 : 2;
+                int idEstado = rbtRealizado.isSelected() ? 1 : (rbtPendiente.isSelected() ? 2 : 3);
 
-            boolean exito = Mantenimiento.registrarMantenimiento(idEquipo, idTecnico, fecha, idTipo, idEstado, costo, "Registro desde interfaz");
-            if (exito) {
-                cargarDatos();
+                try (PreparedStatement pstm = con.prepareCall("call sp_insertar_mantenimiento(?, ?, ?, ?, ?, ?, ?)")) {
+                    pstm.setInt(1, idEquipo);
+                    pstm.setInt(2, idTecnico);
+                    pstm.setString(3, fecha);
+                    pstm.setInt(4, idTipo);
+                    pstm.setInt(5, idEstado);
+                    pstm.setDouble(6, costo);
+                    pstm.setString(7, "Registro desde interfaz");
+                    pstm.execute();
+                }
+
                 limpiarCampos();
                 JOptionPane.showMessageDialog(this, "Mantenimiento registrado correctamente en MySQL.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                cargarDatos();
             }
-
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al registrar mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         } catch (java.time.format.DateTimeParseException e) {
             JOptionPane.showMessageDialog(this, "La fecha debe tener el formato AAAA-MM-DD (ejemplo: 2026-10-16).", "Fecha Inválida", JOptionPane.ERROR_MESSAGE);
         } catch (NumberFormatException e) {
@@ -138,24 +186,6 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
         txtEquipo.requestFocus();
     }
     
-    private void configurarTabla() {
-        
-        modeloTabla = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
-        modeloTabla.addColumn("ID");
-        modeloTabla.addColumn("Equipo");
-        modeloTabla.addColumn("Técnico");
-        modeloTabla.addColumn("Fecha");
-        modeloTabla.addColumn("Tipo");
-        modeloTabla.addColumn("Estado");
-        modeloTabla.addColumn("Costo");
-        tblMantenimientos.setModel(modeloTabla);
-    }
-
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -188,21 +218,27 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
         btnActualizar = new javax.swing.JButton();
         btnEliminar = new javax.swing.JButton();
 
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
         btnGuardar.setFont(new java.awt.Font("Segoe UI Black", 0, 14)); // NOI18N
         btnGuardar.setText("Registrar Mantenimiento");
         btnGuardar.addActionListener(this::btnGuardarActionPerformed);
 
         tblMantenimientos.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
+            new Object [][] {},
             new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
+                "Title 1", "Title 2", "Title 3", "Title 4", "Title 5", "Title 6", "Title 7"
             }
-        ));
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false
+            };
+
+            @Override
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit[columnIndex];
+            }
+        });
         jScrollPane1.setViewportView(tblMantenimientos);
 
         btgTipo.add(rbtPreventivo);
@@ -415,18 +451,31 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
                 return;
             }
 
-            int idEquipo = Mantenimiento.obtenerOCrearEquipo(equipo);
-            int idTecnico = listaTecnicosCombo.get(idxTecnico).getId();
-            int idTipo = rbtPreventivo.isSelected() ? 1 : 2;
-            int idEstado = rbtRealizado.isSelected() ? 1 : (rbtPendiente.isSelected() ? 2 : 3);
+            try (Connection con = Conexion.obtenerConexion()) {
+                int idEquipo = obtenerOCrearEquipo(con, equipo);
+                int idTecnico = listaTecnicosCombo.get(idxTecnico).getId();
+                int idTipo = rbtPreventivo.isSelected() ? 1 : 2;
+                int idEstado = rbtRealizado.isSelected() ? 1 : (rbtPendiente.isSelected() ? 2 : 3);
 
-            boolean exito = Mantenimiento.actualizarMantenimiento(idMantenimientoSeleccionado, idEquipo, idTecnico, fecha, idTipo, idEstado, costo, "Actualizado desde interfaz");
-            if (exito) {
+                try (PreparedStatement pstm = con.prepareCall("call sp_actualizar_mantenimiento(?, ?, ?, ?, ?, ?, ?, ?)")) {
+                    pstm.setInt(1, idMantenimientoSeleccionado);
+                    pstm.setInt(2, idEquipo);
+                    pstm.setInt(3, idTecnico);
+                    pstm.setString(4, fecha);
+                    pstm.setInt(5, idTipo);
+                    pstm.setInt(6, idEstado);
+                    pstm.setDouble(7, costo);
+                    pstm.setString(8, "Actualizado desde interfaz");
+                    pstm.execute();
+                }
+
                 JOptionPane.showMessageDialog(this, "Mantenimiento actualizado exitosamente en MySQL.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
                 idMantenimientoSeleccionado = -1;
                 cargarDatos();
                 limpiarCampos();
             }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al actualizar mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         } catch (java.time.format.DateTimeParseException e) {
             JOptionPane.showMessageDialog(this, "La fecha debe tener el formato AAAA-MM-DD.", "Fecha Inválida", JOptionPane.ERROR_MESSAGE);
         } catch (NumberFormatException e) {
@@ -435,7 +484,7 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
     }//GEN-LAST:event_btnActualizarActionPerformed
 
     private void btnEliminarActionPerformed(java.awt.event.ActionEvent evt) {
-        if (usuarioLogueado != null && !usuarioLogueado.esAdministrador()) {
+        if (!esAdministrador) {
             JOptionPane.showMessageDialog(this, "Solo el Administrador tiene permisos para eliminar registros.", "Acceso Denegado", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -456,14 +505,31 @@ public class IFrmMantenimientos extends javax.swing.JInternalFrame {
         );
 
         if (confirmacion == JOptionPane.YES_OPTION) {
-            boolean exito = Mantenimiento.eliminarMantenimiento(m.getIdMantenimiento());
-            if (exito) {
+            try (Connection con = Conexion.obtenerConexion();
+                 PreparedStatement pstm = con.prepareCall("call sp_eliminar_mantenimiento(?)")) {
+                pstm.setInt(1, m.getIdMantenimiento());
+                pstm.execute();
                 JOptionPane.showMessageDialog(this, "Mantenimiento eliminado exitosamente de MySQL.", "Registro Eliminado", JOptionPane.INFORMATION_MESSAGE);
                 idMantenimientoSeleccionado = -1;
                 cargarDatos();
                 limpiarCampos();
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(this, "Error al eliminar mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+
+    private int obtenerOCrearEquipo(Connection con, String codigoEquipo) throws SQLException {
+        try (PreparedStatement pstm = con.prepareCall("call sp_obtener_o_crear_equipo(?)")) {
+            pstm.setString(1, codigoEquipo);
+            try (ResultSet rs = pstm.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+
+        throw new SQLException("No se pudo obtener el ID del equipo registrado.");
     }
 
 

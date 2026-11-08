@@ -208,6 +208,17 @@ begin
     end if;
 end//
 
+-- validacion para que el costo tampoco sea negativo al actualizar
+create trigger trg_mantenimiento_before_update
+before update on mantenimiento
+for each row
+begin
+    if new.costo < 0 then
+        signal sqlstate '45000'
+        set message_text = 'Error: El costo del mantenimiento no puede ser negativo.';
+    end if;
+end//
+
 -- auditoria al registrar un nuevo mantenimiento
 create trigger trg_mantenimiento_after_insert
 after insert on mantenimiento
@@ -330,6 +341,15 @@ create procedure sp_actualizar_mantenimiento(
     in p_descripcion text
 )
 begin
+    if not exists (
+        select 1
+        from mantenimiento
+        where id_mantenimiento = p_id_mantenimiento
+    ) then
+        signal sqlstate '45000'
+        set message_text = 'Error: El mantenimiento no existe.';
+    end if;
+
     update mantenimiento
     set 
         id_equipo = p_id_equipo,
@@ -347,6 +367,15 @@ create procedure sp_eliminar_mantenimiento(
     in p_id_mantenimiento int
 )
 begin
+    if not exists (
+        select 1
+        from mantenimiento
+        where id_mantenimiento = p_id_mantenimiento
+    ) then
+        signal sqlstate '45000'
+        set message_text = 'Error: El mantenimiento no existe.';
+    end if;
+
     delete from mantenimiento where id_mantenimiento = p_id_mantenimiento;
 end//
 
@@ -369,6 +398,81 @@ begin
     inner join estado_mantenimiento em on m.id_estado_mantenimiento = em.id_estado_mantenimiento
     where m.id_tecnico = p_id_tecnico
     order by m.fecha desc;
+end//
+
+-- consultar mantenimientos para la tabla de registro
+create procedure sp_listar_mantenimientos()
+begin
+    select
+        id_mantenimiento as `ID`,
+        id_equipo,
+        equipo as `Equipo`,
+        marca_modelo,
+        id_tecnico,
+        tecnico as `Técnico`,
+        usuario_tecnico,
+        fecha as `Fecha`,
+        id_tipo,
+        tipo_mantenimiento as `Tipo`,
+        id_estado,
+        estado as `Estado`,
+        costo as `Costo`,
+        descripcion
+    from vw_mantenimientos_realizados;
+end//
+
+-- consultar equipos pendientes para su informe
+create procedure sp_listar_equipos_pendientes()
+begin
+    select
+        concat(equipo, ' - ', marca_modelo) as `Equipo`,
+        tecnico as `Técnico Asignado`,
+        fecha as `Fecha Programada`,
+        tipo_mantenimiento as `Tipo`,
+        estado as `Estado`,
+        costo as `Costo Estimado`
+    from vw_equipos_pendientes;
+end//
+
+-- consultar costos por equipo para su informe
+create procedure sp_listar_costos_por_equipo()
+begin
+    select
+        equipo as `Equipo`,
+        marca_modelo as `Marca / Modelo`,
+        cantidad_servicios as `Cant. Servicios`,
+        costo_acumulado as `Costo Acumulado ($)`
+    from vw_costos_por_equipo;
+end//
+
+-- consultar el costo general mediante un procedimiento
+create procedure sp_costo_total_general()
+begin
+    select fn_costo_total_general() as `Costo Total General Invertido`;
+end//
+
+-- buscar un equipo por código o registrarlo si todavía no existe
+create procedure sp_obtener_o_crear_equipo(
+    in p_codigo_equipo varchar(50)
+)
+begin
+    declare v_id_equipo int;
+
+    if exists (
+        select 1
+        from equipo
+        where codigo_equipo = p_codigo_equipo
+    ) then
+        select id_equipo into v_id_equipo
+        from equipo
+        where codigo_equipo = p_codigo_equipo;
+    else
+        insert into equipo (codigo_equipo, marca_modelo, id_tipo_equipo)
+        values (p_codigo_equipo, concat('Equipo ', p_codigo_equipo), 1);
+        set v_id_equipo = last_insert_id();
+    end if;
+
+    select v_id_equipo as id_equipo;
 end//
 
 -- procedimientos para llenar combos

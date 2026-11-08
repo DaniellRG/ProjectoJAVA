@@ -4,7 +4,16 @@
  */
 package mantenimiento;
 
+import objetos.ItemCombo;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import usuario.Conexion;
 
 /**
  *
@@ -14,74 +23,73 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
     
     private static final long serialVersionUID = 1L;
     
-    private DefaultTableModel modeloTabla;
     private java.util.List<ItemCombo> listaTecnicosCombo;
 
     
     public IFrmMantenimientosPorTecnico() {
         initComponents();
-        
-        this.setClosable(true);
-        this.setIconifiable(true);
-        this.setMaximizable(true);
-        this.setResizable(true);
-        this.setTitle("Informe de Mantenimientos por Técnico");
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        configurarTabla();
-        cargarTecnicos();
-        consultarPorTecnico();
-    }
-    
-    
-    private void cargarTecnicos() {
-        listaTecnicosCombo = Mantenimiento.obtenerTecnicosCombo();
-        cmbTecnico.removeAllItems();
-        for (ItemCombo item : listaTecnicosCombo) {
-            cmbTecnico.addItem(item.getTexto());
+        if (cargarTecnicos()) {
+            consultarPorTecnico();
         }
     }
     
-    private void configurarTabla() {
-        
-        modeloTabla = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
+    
+    private boolean cargarTecnicos() {
+        listaTecnicosCombo = new ArrayList<>();
+        cmbTecnico.removeAllItems();
+
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement pstm = con.prepareCall("call sp_combo_tecnicos()");
+             ResultSet rs = pstm.executeQuery()) {
+            while (rs.next()) {
+                ItemCombo item = new ItemCombo(rs.getInt("id_usuario"), rs.getString("nombre_completo"));
+                listaTecnicosCombo.add(item);
+                cmbTecnico.addItem(item.getTexto());
             }
-        };
-        modeloTabla.addColumn("Equipo");
-        modeloTabla.addColumn("Fecha");
-        modeloTabla.addColumn("Tipo");
-        modeloTabla.addColumn("Estado");
-        modeloTabla.addColumn("Costo");
-        tblTecnico.setModel(modeloTabla);
+            return true;
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar técnicos: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
     }
     
     private void consultarPorTecnico() {
-        modeloTabla.setRowCount(0); 
+        DefaultTableModel modeloTabla = (DefaultTableModel) tblTecnico.getModel();
+        modeloTabla.setRowCount(0);
 
         int idx = cmbTecnico.getSelectedIndex();
-        if (idx < 0 || listaTecnicosCombo == null || idx >= listaTecnicosCombo.size()) {
-            lblCantidad.setText("Cantidad de mantenimientos encontrados: 0");
-            return;
+        int idTecnico = 0;
+        if (idx >= 0 && idx < listaTecnicosCombo.size()) {
+            idTecnico = listaTecnicosCombo.get(idx).getId();
         }
 
-        int idTecnico = listaTecnicosCombo.get(idx).getId();
-        java.util.List<Mantenimiento> lista = Mantenimiento.obtenerMantenimientosPorTecnico(idTecnico);
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement pstm = con.prepareCall("call sp_mantenimientos_por_tecnico(?)")) {
+            pstm.setInt(1, idTecnico);
+            try (ResultSet rs = pstm.executeQuery()) {
+                ResultSetMetaData metadata = rs.getMetaData();
+                modeloTabla.setColumnIdentifiers(new Object[]{
+                    metadata.getColumnLabel(2),
+                    metadata.getColumnLabel(3),
+                    metadata.getColumnLabel(4),
+                    metadata.getColumnLabel(5),
+                    metadata.getColumnLabel(6)
+                });
 
-        for (Mantenimiento m : lista) {
-            modeloTabla.addRow(new Object[]{
-                m.getEquipo(),
-                m.getFecha(),
-                m.getTipoMantenimiento(),
-                m.getEstado(),
-                "$" + String.format("%,.2f", m.getCosto())
-            });
+                while (rs.next()) {
+                    modeloTabla.addRow(new Object[]{
+                        rs.getObject(2),
+                        rs.getObject(3),
+                        rs.getObject(4),
+                        rs.getObject(5),
+                        "$" + String.format("%,.2f", rs.getDouble(6))
+                    });
+                }
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al consultar mantenimientos por técnico: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
         }
-
-        
-        lblCantidad.setText("Cantidad de mantenimientos encontrados: " + lista.size());
     }
 
     /**
@@ -95,9 +103,10 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
 
         cmbTecnico = new javax.swing.JComboBox<>();
         btnBuscar = new javax.swing.JButton();
-        lblCantidad = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
         tblTecnico = new javax.swing.JTable();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
         cmbTecnico.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
@@ -105,29 +114,27 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
         btnBuscar.setText("Consultar");
         btnBuscar.addActionListener(this::btnBuscarActionPerformed);
 
-        lblCantidad.setText("Cantidad de mantenimientos encontrados:");
-
         tblTecnico.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
+            new Object [][] {},
             new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
+                "Title 1", "Title 2", "Title 3", "Title 4", "Title 5"
             }
-        ));
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false
+            };
+
+            @Override
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit[columnIndex];
+            }
+        });
         jScrollPane1.setViewportView(tblTecnico);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGap(0, 0, Short.MAX_VALUE)
-                .addComponent(lblCantidad, javax.swing.GroupLayout.PREFERRED_SIZE, 255, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap(36, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
@@ -147,8 +154,6 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
                     .addComponent(btnBuscar))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
-                .addComponent(lblCantidad)
                 .addGap(50, 50, 50))
         );
 
@@ -165,7 +170,6 @@ public class IFrmMantenimientosPorTecnico extends javax.swing.JInternalFrame {
     private javax.swing.JButton btnBuscar;
     private javax.swing.JComboBox<String> cmbTecnico;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JLabel lblCantidad;
     private javax.swing.JTable tblTecnico;
     // End of variables declaration//GEN-END:variables
 }

@@ -4,6 +4,13 @@
  */
 package mantenimiento;
 
+import usuario.Conexion;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -14,63 +21,51 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
     
     private static final long serialVersionUID = 1L;
     
-    private DefaultTableModel modeloTabla;
-
     /**
      * Creates new form IFrmCostosMantenimiento
      */
     public IFrmCostosMantenimiento() {
         initComponents();
-        
-        this.setClosable(true);
-        this.setIconifiable(true);
-        this.setMaximizable(true);
-        this.setResizable(true);
-        this.setTitle("Informe de Costos Invertidos en Mantenimiento (Solo Administrador)");
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        configurarTabla();
         calcularCostosTotales();
     }
     
-    private void configurarTabla() {
-        
-        modeloTabla = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
-        modeloTabla.addColumn("Equipo");
-        modeloTabla.addColumn("Marca / Modelo");
-        modeloTabla.addColumn("Cant. Servicios");
-        modeloTabla.addColumn("Costo Acumulado ($)");
-        tblCostos.setModel(modeloTabla);
-    }
-    
     private void calcularCostosTotales() {
-        modeloTabla.setRowCount(0); // Limpiar filas anteriores
+        DefaultTableModel modeloTabla = (DefaultTableModel) tblCostos.getModel();
+        modeloTabla.setRowCount(0);
+        lblTotalCostos.setText("Costo Total General Invertido: no disponible");
 
-        String sql = "SELECT equipo, marca_modelo, cantidad_servicios, costo_acumulado FROM vw_costos_por_equipo";
-        try (java.sql.Connection con = Conexion.obtenerConexion();
-             java.sql.PreparedStatement ps = con.prepareStatement(sql);
-             java.sql.ResultSet rs = ps.executeQuery()) {
-             
+        try (Connection con = Conexion.obtenerConexion();
+             PreparedStatement pstm = con.prepareCall("call sp_listar_costos_por_equipo()");
+             ResultSet rs = pstm.executeQuery()) {
+            ResultSetMetaData metadata = rs.getMetaData();
+            modeloTabla.setColumnIdentifiers(new Object[]{
+                metadata.getColumnLabel(1),
+                metadata.getColumnLabel(2),
+                metadata.getColumnLabel(3),
+                metadata.getColumnLabel(4)
+            });
+
             while (rs.next()) {
                 modeloTabla.addRow(new Object[]{
-                    rs.getString("equipo"),
-                    rs.getString("marca_modelo"),
-                    rs.getInt("cantidad_servicios"),
-                    "$" + String.format("%,.2f", rs.getDouble("costo_acumulado"))
+                    rs.getObject(1),
+                    rs.getObject(2),
+                    rs.getObject(3),
+                    "$" + String.format("%,.2f", rs.getDouble(4))
                 });
             }
-        } catch (java.sql.SQLException e) {
-            javax.swing.JOptionPane.showMessageDialog(this, "Error al cargar costos por equipo: " + e.getMessage(), "Error BD", javax.swing.JOptionPane.ERROR_MESSAGE);
-        }
 
-        
-        double costoTotal = Mantenimiento.obtenerCostoTotalGeneral();
-        lblTotalCostos.setText("Costo Total General Invertido: $" + String.format("%,.2f", costoTotal));
+            try (PreparedStatement pstmTotal = con.prepareCall("call sp_costo_total_general()");
+                 ResultSet rsTotal = pstmTotal.executeQuery()) {
+                if (!rsTotal.next()) {
+                    throw new SQLException("La función de costo total no devolvió resultados.");
+                }
+                ResultSetMetaData metadataTotal = rsTotal.getMetaData();
+                lblTotalCostos.setText(metadataTotal.getColumnLabel(1) + ": $" + String.format("%,.2f", rsTotal.getDouble(1)));
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar costos de mantenimiento: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /**
@@ -88,6 +83,8 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
         jScrollPane1 = new javax.swing.JScrollPane();
         tblCostos = new javax.swing.JTable();
 
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
         lblTitulo.setFont(new java.awt.Font("Segoe UI Black", 0, 24)); // NOI18N
         lblTitulo.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         lblTitulo.setText("Resumen Financiero de Mantenimientos");
@@ -99,16 +96,20 @@ public class IFrmCostosMantenimiento extends javax.swing.JInternalFrame {
         btnRefrescar.addActionListener(this::btnRefrescarActionPerformed);
 
         tblCostos.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
+            new Object [][] {},
             new String [] {
                 "Title 1", "Title 2", "Title 3", "Title 4"
             }
-        ));
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false
+            };
+
+            @Override
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit[columnIndex];
+            }
+        });
         jScrollPane1.setViewportView(tblCostos);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());

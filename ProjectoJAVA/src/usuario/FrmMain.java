@@ -2,10 +2,10 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
-package mantenimiento;
+package usuario;
 
+import mantenimiento.*;
 import javax.swing.JFrame;
-import usuario.Usuario;
 
 /**
  *
@@ -17,28 +17,24 @@ public class FrmMain extends javax.swing.JFrame {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(FrmMain.class.getName());
     
-    private final Usuario usuarioActual;
+    private final boolean esAdministrador;
 
     /**
      * Creates new form FrmMain
      */
-    public FrmMain(Usuario usuario) {
+    public FrmMain(String usuario, String nombreRol, boolean esAdministrador) {
         initComponents();
-        this.usuarioActual = usuario;
+        this.esAdministrador = esAdministrador;
 
         
         this.setExtendedState(JFrame.MAXIMIZED_BOTH);
-
-        
-        String rol = usuarioActual.esAdministrador() ? "Administrador (Jefe)" : "Técnico (Trabajador)";
-        this.setTitle("Sistema de Mantenimiento - Usuario: " + usuarioActual.getUsuario() + " [" + rol + "]");
 
         aplicarPermisos();
     }
     
     private void aplicarPermisos() {
         
-        if (!usuarioActual.esAdministrador()) {
+        if (!esAdministrador) {
             itemCostos.setVisible(false);
         }
     }
@@ -121,11 +117,11 @@ public class FrmMain extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jDesktopPane1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(jDesktopPane1)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jDesktopPane1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(jDesktopPane1)
         );
 
         pack();
@@ -147,7 +143,7 @@ public class FrmMain extends javax.swing.JFrame {
     }
 
     private void itemRegistroActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemRegistroActionPerformed
-        abrirVentana(new IFrmMantenimientos(usuarioActual));
+        abrirVentana(new IFrmMantenimientos(esAdministrador));
     }//GEN-LAST:event_itemRegistroActionPerformed
 
     private void itemPendientesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemPendientesActionPerformed
@@ -161,31 +157,6 @@ public class FrmMain extends javax.swing.JFrame {
     private void itemCostosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemCostosActionPerformed
         abrirVentana(new IFrmCostosMantenimiento());
     }//GEN-LAST:event_itemCostosActionPerformed
-
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
-            logger.log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> new FrmMain(new Usuario(1, "ADMIN", "1234", 1)).setVisible(true));
-    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem itemCerrarSesion;
